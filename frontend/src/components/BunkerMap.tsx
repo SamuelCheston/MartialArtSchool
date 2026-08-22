@@ -1,0 +1,247 @@
+import React, { useState } from 'react';
+import { 
+    Box, 
+    VStack, 
+    HStack, 
+    Text, 
+    Badge, 
+    Heading, 
+    SimpleGrid,
+    Grid,
+    IconButton
+} from "@chakra-ui/react";
+import { ProgressBar, ProgressRoot } from './ui/progress';
+import { Profession, Silo, Agent } from '../logic/models';
+import { X, Network } from 'lucide-react';
+import './BunkerMap.css';
+import { formatFragmentLabel, GAME_THEME, getDepartmentName } from '../gameTheme';
+
+interface BunkerMapProps {
+    silo: Silo;
+    agent: Agent | null;
+}
+
+const CLASS_DATA = [
+    { id: 'ELITE', name: '内门', color: 'purple', bg: 'purple.50', borderColor: 'purple.500' },
+    { id: 'COMMONER', name: '外门', color: 'green', bg: 'green.50', borderColor: 'green.500' }
+];
+
+export const BunkerMap: React.FC<BunkerMapProps> = ({ silo, agent }) => {
+    const [selectedDept, setSelectedDept] = useState<Profession | null>(null);
+
+    const getConnValue = (profId: number) => {
+        if (!agent || !agent.connections) return 0;
+        const conn = agent.connections.find(c => c.profession_id === profId);
+        return conn ? conn.value : 0;
+    };
+
+    const getIdeologyLabel = (type: string, val: number) => {
+        const v = val * 100;
+        if (v <= 10) return "排外";
+        if (v <= 40) return "中立排外";
+        return "亲外";
+    };
+
+    return (
+        <VStack align="stretch" gap={4} w="full">
+            <HStack align="start" gap={6} w="full" wrap="wrap">
+                {/* School Map */}
+                <Box flex={{ base: "1 1 100%", md: 2 }} className="bunker-map-container" borderRadius="lg" border="1px solid" borderColor="gray.300" overflow="hidden" bg="gray.100">
+                    <VStack align="stretch" gap={0} className="bunker-silo-structure">
+                        {CLASS_DATA.map(cls => (
+                            <Box 
+                                key={cls.id} 
+                                bg={cls.bg}
+                                borderLeft="8px solid"
+                                borderColor={cls.borderColor}
+                                p={6}
+                                borderBottom={cls.id === 'ELITE' ? "4px solid" : "none"}
+                                className={`bunker-class class-${cls.id.toLowerCase()}`}
+                            >
+                                <HStack justify="space-between" mb={6}>
+                                    <VStack align="start" gap={0}>
+                                        <Heading size="sm" color={`${cls.color}.700`} textTransform="uppercase" letterSpacing="wider">{cls.name}</Heading>
+                                        <Text fontSize="xs" color="gray.500" fontWeight="bold">身份层级: {cls.id}</Text>
+                                    </VStack>
+                                    <Badge colorPalette={cls.color} variant="solid" size="md" px={3} py={1} borderRadius="full">
+                                        {silo.professions.filter(p => p.class_type === cls.id).length} 个{GAME_THEME.departmentLabel}
+                                    </Badge>
+                                </HStack>
+
+                                <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} gap={4}>
+                                    {silo.professions
+                                        .filter(p => p.class_type === cls.id)
+                                        .map(dept => {
+                                            const connVal = getConnValue(dept.id);
+                                            return (
+                                                <Box 
+                                                    key={dept.id} 
+                                                    onClick={() => setSelectedDept(dept)}
+                                                    p={4}
+                                                    bg={selectedDept?.id === dept.id ? `${cls.color}.200` : "white"}
+                                                    borderRadius="lg"
+                                                    boxShadow="sm"
+                                                    cursor="pointer"
+                                                    border="2px solid"
+                                                    borderColor={selectedDept?.id === dept.id ? cls.borderColor : "gray.100"}
+                                                    _hover={{ transform: "scale(1.02)", boxShadow: "md", borderColor: cls.borderColor }}
+                                                    transition="all 0.2s"
+                                                    display="flex"
+                                                    flexDirection="column"
+                                                    alignItems="flex-start"
+                                                    minH="100px"
+                                                    position="relative"
+                                                >
+                                                    <HStack w="full" justify="space-between" mb={2}>
+                                                        <Text fontWeight="black" fontSize="sm" color="gray.800">{getDepartmentName(dept.name)}</Text>
+                                                        {connVal > 0 && (
+                                                            <Badge colorPalette="blue" size="xs" variant="solid" borderRadius="sm">
+                                                                <HStack gap={0.5}>
+                                                                    <Network size={10} />
+                                                                    <Text fontSize="9px">{(connVal * 100).toFixed(0)}%</Text>
+                                                                </HStack>
+                                                            </Badge>
+                                                        )}
+                                                    </HStack>
+                                                    
+                                                    <VStack align="start" gap={1} w="full">
+                                                        <HStack justify="space-between" w="full">
+                                                            <Text fontSize="10px" color="gray.500">人数</Text>
+                                                            <Text fontSize="10px" fontWeight="bold" color="blue.600">{dept.population}</Text>
+                                                        </HStack>
+                                                        <ProgressRoot value={dept.panic_value * 100} max={100} w="full" size="xs" colorPalette={dept.panic_value > 0.5 ? "red" : "blue"}>
+                                                            <ProgressBar />
+                                                        </ProgressRoot>
+                                                    </VStack>
+                                                </Box>
+                                            );
+                                        })}
+                                </SimpleGrid>
+                            </Box>
+                        ))}
+                    </VStack>
+                </Box>
+
+                {/* Detail Panel */}
+                <Box flex={{ base: "1 1 100%", md: 1 }} minW="300px">
+                    {selectedDept ? (
+                        <Box 
+                            bg="white" 
+                            p={5} 
+                            borderRadius="lg" 
+                            border="1px solid" 
+                            borderColor="gray.200" 
+                            boxShadow="lg"
+                            position="sticky"
+                            top="20px"
+                        >
+                            <HStack justify="space-between" mb={4} borderBottom="1px solid" borderColor="gray.100" pb={3}>
+                                <VStack align="start" gap={0}>
+                                    <Heading size="sm" color="gray.800">{getDepartmentName(selectedDept.name)}</Heading>
+                                    <Text fontSize="xs" color="gray.500">{GAME_THEME.departmentLabel}情报面板</Text>
+                                </VStack>
+                                <IconButton 
+                                    aria-label="Close" 
+                                    size="xs" 
+                                    variant="ghost" 
+                                    onClick={() => setSelectedDept(null)}
+                                >
+                                    <X size={16} />
+                                </IconButton>
+                            </HStack>
+
+                            <VStack align="stretch" gap={5}>
+                                    <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                                        <VStack align="start" gap={0}>
+                                            <Text fontSize="2xs" color="gray.500" textTransform="uppercase" fontWeight="bold">层级</Text>
+                                            <Badge colorPalette={selectedDept.class_type === 'ELITE' ? 'purple' : 'green'} variant="solid">
+                                                {selectedDept.class_type}
+                                            </Badge>
+                                        </VStack>
+                                        <VStack align="start" gap={0}>
+                                            <Text fontSize="2xs" color="gray.500" textTransform="uppercase" fontWeight="bold">人脉</Text>
+                                            <Badge colorPalette="blue" variant="solid">
+                                                {(getConnValue(selectedDept.id) * 100).toFixed(0)}%
+                                            </Badge>
+                                        </VStack>
+                                        <VStack align="start" gap={0}>
+                                            <Text fontSize="2xs" color="gray.500" textTransform="uppercase" fontWeight="bold">人数</Text>
+                                            <Text fontWeight="bold" color="blue.600">{selectedDept.population}</Text>
+                                        </VStack>
+                                        <VStack align="start" gap={0}>
+                                            <Text fontSize="2xs" color="gray.500" textTransform="uppercase" fontWeight="bold">权势</Text>
+                                            <Text fontWeight="bold" color="orange.600">{selectedDept.power_level}</Text>
+                                        </VStack>
+                                    </Grid>
+
+                                <VStack align="stretch" gap={1}>
+                                    <Text fontSize="2xs" color="gray.500" textTransform="uppercase" fontWeight="bold">动荡</Text>
+                                    <HStack>
+                                        <Text fontSize="xs" fontWeight="bold" w="40px" color={selectedDept.panic_value > 0.5 ? "red.600" : "gray.700"}>
+                                            {(selectedDept.panic_value * 100).toFixed(1)}%
+                                        </Text>
+                                        <ProgressRoot value={selectedDept.panic_value * 100} max={100} w="full" size="xs" colorPalette={selectedDept.panic_value > 0.5 ? "red" : "orange"}>
+                                            <ProgressBar />
+                                        </ProgressRoot>
+                                    </HStack>
+                                </VStack>
+
+                                <Box bg="gray.50" p={3} borderRadius="md" border="1px solid" borderColor="gray.100">
+                                    <Text fontSize="xs" fontWeight="bold" mb={3} color="gray.700" borderBottom="1px solid" borderColor="gray.200" pb={1}>思潮</Text>
+                                    <VStack align="stretch" gap={3}>
+                                        {Object.entries(selectedDept.ideologies || {}).map(([type, val]) => (
+                                            <VStack key={type} align="stretch" gap={1}>
+                                                <HStack justify="space-between">
+                                                    <Text fontSize="2xs" textTransform="capitalize" color="gray.600" fontWeight="medium">
+                                                        {type.replace('_', ' ')}
+                                                    </Text>
+                                                    <Badge variant="surface" size="xs" colorPalette={type === 'pro_foreign' ? "teal" : "blue"}>
+                                                        {getIdeologyLabel(type, val)}
+                                                    </Badge>
+                                                </HStack>
+                                                <HStack>
+                                                    <Text fontSize="2xs" w="35px" color="gray.700">{(val * 100).toFixed(0)}%</Text>
+                                                    <ProgressRoot value={val * 100} max={100} w="full" size="xs" colorPalette={type === 'pro_foreign' ? "teal" : "blue"}>
+                                                        <ProgressBar />
+                                                    </ProgressRoot>
+                                                </HStack>
+                                            </VStack>
+                                        ))}
+                                    </VStack>
+                                </Box>
+
+                                <Box>
+                                    <Text fontSize="xs" fontWeight="bold" mb={2} color="gray.700">情报碎片 ({selectedDept.known_fragments?.length || 0})</Text>
+                                    <HStack wrap="wrap" gap={1.5}>
+                                        {selectedDept.known_fragments?.map(f => (
+                                            <Badge key={f} colorPalette="cyan" variant="solid" size="xs" borderRadius="sm">{formatFragmentLabel(f)}</Badge>
+                                        )) || <Text fontSize="xs" color="gray.400" fontStyle="italic">暂无情报</Text>}
+                                    </HStack>
+                                </Box>
+                            </VStack>
+                        </Box>
+                    ) : (
+                        <Box 
+                            h="full" 
+                            minH="300px" 
+                            display="flex" 
+                            alignItems="center" 
+                            justifyContent="center" 
+                            bg="gray.50" 
+                            borderRadius="lg" 
+                            border="2px dashed" 
+                            borderColor="gray.300"
+                            p={8}
+                            textAlign="center"
+                        >
+                            <VStack gap={2}>
+                                <Text color="gray.400" fontWeight="bold">尚未选择堂口</Text>
+                                <Text fontSize="xs" color="gray.500">点击左侧堂口即可查看详细情报、人数与思潮状态。</Text>
+                            </VStack>
+                        </Box>
+                    )}
+                </Box>
+            </HStack>
+        </VStack>
+    );
+};
