@@ -1,6 +1,7 @@
 # Minimal Wails CI: install frontend deps, build the app with the Wails CLI
-# (generates the gitignored wailsjs bindings, builds the frontend and the Go
-# binary), then vet and test the Go side. Runs on every push/PR to main.
+# (the wailsjs bindings are committed under frontend/wailsjs/ and refreshed in
+# place; builds the frontend and the Go binary), then vet and test the Go
+# side. Runs on every push/PR to main.
 name: Go
 
 on:

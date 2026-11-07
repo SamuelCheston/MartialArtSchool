@@ -21,7 +21,6 @@ build/windows/
 build/darwin/
 build/linux/
 frontend/dist/
-frontend/wailsjs/
 wails.log
 
 # Frontend
